@@ -1,6 +1,5 @@
 import fs from 'fs/promises';
 import path from 'path';
-import fetch from 'node-fetch'; // or use global fetch in newer Node versions
 import { fileURLToPath } from 'url';
 
 // Set the headers for the fetch requests
