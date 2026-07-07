@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Cormorant+Infant&display=swap');
 
-/* Global */
+/*Global*/
 * {
     margin: 0;
     padding: 0;
@@ -11,7 +11,7 @@ body,
 html {
     height: 100%;
     font-family: "Cormorant Infant", serif;
-    overflow: hidden; /*Ensures that only the input or output screen is shown, but not both*/
+    overflow: hidden; /*only one page (input or output) is shown at a time*/
 }
 
 .container {
@@ -27,13 +27,13 @@ html {
     justify-content: center;
 }
 
-/* =======================
+/*=======================
    Back Arrow
-======================= */
+=======================*/
 
-    .back-arrow {
+.back-arrow {
     position: relative;
-    z-index: 100; /*keeps the back link clickable above the output page*/
+    z-index: 100; /*keeps the back link clickable above both pages*/
     text-decoration: none;
     font-size: 24px;
     color: #176b53;
@@ -42,30 +42,29 @@ html {
     padding: 10px;
 }
 
-    .back-arrow:hover {
-      opacity: 0.7;
-    }
+.back-arrow:hover {
+    opacity: 0.7;
+}
 
-    .arrow-icon {
-      margin-right: 8px;
-    }
+.arrow-icon {
+    margin-right: 8px;
+}
 
-
-/* Background */
+/*Background*/
 #bg-container {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%; /*Make the background take up the entire screen*/
+    width: 100%;
     height: 100vh;
-    background-image: url('engjell-gjepali-M0OIyN5u8ZM-unsplash.jpg'); /*By setting the background image here, it is easy to overlay the glass cards on top*/
+    background-image: url('engjell-gjepali-M0OIyN5u8ZM-unsplash.jpg');
     background-size: cover;
     background-position: center;
-    z-index: -1; /*Send the background image further back so that we can overlay glass cards*/
+    z-index: -1; /*sits behind the glass cards*/
 }
 
-#bg-container::before { /*This just adds an overlay with the image source, and positions it*/
-    content: "Photo by Engjell Gjepali"; 
+#bg-container::before { /*photo credit overlay*/
+    content: "Photo by Engjell Gjepali";
     position: absolute;
     bottom: 10px;
     right: 10px;
@@ -76,49 +75,100 @@ html {
 /*Heading outside of the glass cards*/
 #heading1 {
     position: absolute;
-    top: 60px;
-    left: 360px;
+    top: 40px;
+    left: 0;
+    width: 100%;
+    text-align: center;
     font-size: 48px;
     font-family: "DM Serif Display", serif;
     color: #166b53;
 }
 
-/* Glass Card */
-.glass-card { /*This is the styling for all the glass-cards*/
+/*Glass Card*/
+.glass-card {
     background: rgba(213, 216, 203, 0.6);
-    border-radius: 30px; /*Adds rounded edges*/
+    border-radius: 30px;
     padding: 40px;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
-/* Input Box */ /*Design for the glass card on the INPUT page*/
-#inputbox {
-    width: 400px;
-    text-align: center;
+/*=======================
+   Input Page
+=======================*/
+
+/*column layout so the history card can sit below the input box and scroll*/
+#input {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 30px;
+    padding: 130px 20px 40px; /*top padding clears the page heading*/
+    overflow-y: auto;
 }
 
-.input-subheading { /*Styling for the heading of the glass card on the input page*/
+#inputbox {
+    width: 440px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.input-subheading {
     font-size: 20px;
     color: #166b53;
     font-family: "DM Serif Display", serif;
-    margin-bottom: 20px; /*Adding space between the subheading and the input boxes*/
+    margin-bottom: 20px;
 }
 
-/* Input Fields */ /*Design for each individual input section (x & y) (where users type in coords)*/
+/*Toggles*/
+.toggle-label {
+    font-size: 17px;
+    color: #166b53;
+    margin: 14px 0 6px;
+}
+
+.toggle-group {
+    display: inline-flex;
+    background-color: rgba(213, 216, 203, 0.8);
+    border: 2px solid #166b53;
+    border-radius: 30px;
+    overflow: hidden;
+}
+
+.toggle-group button {
+    padding: 8px 16px;
+    font-family: "DM Serif Display", serif;
+    font-size: 14px;
+    color: #166b53;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.toggle-group button:hover {
+    background-color: #b9c4b4;
+}
+
+.toggle-group button.active {
+    background-color: #166b53;
+    color: #d5d8cb;
+}
+
+/*Input Fields*/
 .input-field {
     margin: 20px 0;
 }
 
-.input-field label { /*Styling the labels for each input field*/
+.input-field label {
     font-size: 20px;
     display: block;
     margin-bottom: 5px;
     color: #166b53;
 }
 
-.input-field input { /*Styling for the user input and the input field as well (specifically the input boxes)*/
+.input-field input {
     width: 100%;
     height: 40px;
     padding: 10px;
@@ -128,7 +178,18 @@ html {
     font-size: 16px;
 }
 
-/* Submit Button */
+.input-field textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 16px;
+    border: 0px;
+    background-color: #d5d8cb;
+    font-size: 15px;
+    font-family: monospace;
+    resize: vertical;
+}
+
+/*Submit Button*/
 #submit {
     margin-top: 20px;
     padding: 12px 24px;
@@ -146,15 +207,54 @@ html {
     background-color: #88a2a0;
 }
 
-/* Output Columns */
+/*History card (below the input box, session only)*/
+.history-card {
+    width: 640px;
+    max-width: 92vw;
+    padding: 24px 30px;
+    text-align: left;
+    flex-shrink: 0;
+}
 
-/* Output Page */
+.history-card .card-title {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.history-entry {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(22, 107, 83, 0.25);
+}
+
+.history-entry:last-child {
+    border-bottom: none;
+}
+
+.history-input {
+    display: block;
+    font-family: "DM Serif Display", serif;
+    font-size: 16px;
+    color: #166b53;
+}
+
+.history-out {
+    display: block;
+    font-size: 15px;
+    color: #2b2b2b;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+/*=======================
+   Output Page
+=======================*/
+
 #output {
     flex-direction: column;
     justify-content: flex-start;
     gap: 30px;
     padding: 40px 0;
-    overflow-y: auto; /*scrolls if the cards are taller than the screen*/
+    overflow-y: auto; /*scrolls if the results are taller than the screen*/
 }
 
 .output-columns {
@@ -172,7 +272,7 @@ html {
     text-align: center;
     display: flex;
     flex-direction: column;
-    gap: 26px; /*even spacing between the PC and VESCO blocks*/
+    gap: 26px;
 }
 
 /*the CRS name at the top of each card (Local / WGS84 / EPSG:3003)*/
@@ -184,7 +284,20 @@ html {
     border-bottom: 1px solid rgba(22, 107, 83, 0.35);
 }
 
-/*the Poggio Civitate / VESCO subheadings*/
+/*small marker showing which card holds the values the user entered*/
+.input-badge {
+    display: none;
+    font-size: 13px;
+    vertical-align: middle;
+    padding: 2px 10px;
+    margin-left: 6px;
+    border: 1px solid #166b53;
+    border-radius: 20px;
+    color: #166b53;
+    background-color: rgba(213, 216, 203, 0.8);
+}
+
+/*the site system subheadings inside cards*/
 .coord-block h4 {
     font-family: "DM Serif Display", serif;
     font-size: 20px;
@@ -192,19 +305,17 @@ html {
     margin-bottom: 8px;
 }
 
-/* Output Values */
+/*Output Values*/
 #input-display,
 #wgs-display,
-#espg-display,
-#Vwgs-display,
-#Vespg-display {
+#espg-display {
     color: #2b2b2b;
-    font-size: 19px; /*larger coordinate text*/
+    font-size: 19px;
     line-height: 1.6;
     margin-bottom: 10px;
 }
 
-/* Copy Buttons */
+/*Copy Buttons*/
 .copy-btn {
     align-self: center;
     padding: 5px 18px;
@@ -222,7 +333,47 @@ html {
     background-color: #88a2a0;
 }
 
-/* New Search Button */
+/*Batch results*/
+.batch-card {
+    width: 900px;
+    max-width: 94vw;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#batchResults {
+    overflow-x: auto;
+}
+
+.batch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    color: #2b2b2b;
+}
+
+.batch-table th {
+    font-family: "DM Serif Display", serif;
+    color: #166b53;
+    padding: 8px 10px;
+    border-bottom: 2px solid rgba(22, 107, 83, 0.45);
+    white-space: nowrap;
+}
+
+.batch-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(22, 107, 83, 0.2);
+    white-space: nowrap;
+}
+
+.batch-errors {
+    font-size: 15px;
+    color: #8a3b2e;
+}
+
+/*New Search Button*/
 #newsearch {
     padding: 12px 28px;
     border-radius: 30px;
@@ -233,107 +384,9 @@ html {
     font-size: 18px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    flex-shrink: 0;
 }
 
 #newsearch:hover {
-    background-color: #88a2a0;
-}
-
-/* Loader*/
-.loader-overlay { /*This controls the background of the screen while the loader is running.*/
-    position: fixed;
-    top: 0;
-    left: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999; /*Makes sure it covers the output screen while it is running*/
-    width: 100%;
-    height: 100vh;
-    background-image: url('engjell-gjepali-M0OIyN5u8ZM-unsplash.jpg'); /*Has the same background as the input and output pages so it looks more seamless*/
-    background-size: cover;
-    background-position: center center;
-}
-
-.loader { /*Designs the loader itself*/
-    display: inline-block;
-    width: 30px;
-    height: 30px;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border: 4px solid #166b53;
-    top: 50%;
-    animation: loader 2s infinite ease;
-}
-
-
-.loader-inner { /*Design for the inner part of the loader*/
-    vertical-align: top;
-    display: inline-block;
-    width: 100%;
-    background-color: #d5d8cb;
-    animation: loader-inner 2s infinite ease-in;
-}
-
-@keyframes loader { /*Controls the animation of the loader-- look in the references of the ReadMe to see the source code*/
-
-    0% {
-        transform: rotate(0deg);
-    }
-
-    25% {
-        transform: rotate(180deg);
-    }
-
-    50% {
-        transform: rotate(180deg);
-    }
-
-    75% {
-        transform: rotate(360deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes loader-inner { /*Controls the animation of the inner loader-- look in the references of the ReadMe to see the source code*/
-
-    0% {
-        height: 0%;
-    }
-
-    25% {
-        height: 0%;
-    }
-
-    50% {
-        height: 100%;
-    }
-
-    75% {
-        height: 100%;
-    }
-
-    100% {
-        height: 0%;
-    }
-}
-.copy-btn {
-    margin-top: 8px;
-    padding: 4px 14px;
-    font-family: "DM Serif Display", serif;
-    font-size: 14px;
-    color: #166b53;
-    background-color: #d5d8cb;
-    border: 2px solid #166b53;
-    border-radius: 30px;
-    cursor: pointer;
-}
-
-.copy-btn:hover {
     background-color: #88a2a0;
 }
