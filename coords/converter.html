@@ -16,103 +16,130 @@
 
 <body>
 
-    <!-- Back to homepage (back arrow)-->
+    <!--Back to homepage (back arrow)-->
     <a href="../projects/projects-page.html" class="back-arrow">
         <span class="arrow-icon">&#8592;</span> Back
     </a>
 
-    <!-- Input Form -->
     <div class="container">
-        <!-- Input Section -->
+
+        <!--Input Section-->
         <div class="pages" id="input" style="display: flex;">
             <div id="bg-container">
-                <h2 id="heading1">Coordinates to Projected Coordinates</h2>
+                <h2 id="heading1">Coordinate Converter</h2>
             </div>
+
             <div class="glass-card" id="inputbox">
-                <!--Class glass-card is used to stylize all "glass card" objects (the translucent containers)-->
-                <h3 class="input-subheading">Input coordinates to get projected coordinates.</h3>
-                <!--Heading within glass card-->
-                <form id="inputform"> <!--This form accepts all the coordinates to convert-->
-                    <div class="input-field">
-                        <label for="xcoord">x-coordinate:</label>
-                        <input type="number" name="xcoord" id="xcoord" step="any" required>
-                        <!--Input type is number so that users can only enter valid coordinates. Has required so that both boxes need to be filled in order for form to submit (makes it harder to break the code)-->
+                <h3 class="input-subheading">Convert between site grid, WGS84, and EPSG:3003.</h3>
+
+                <!--which CRS the values being entered are in-->
+                <div class="toggle-label">Input coordinates are:</div>
+                <div class="toggle-group" id="modeToggle">
+                    <button type="button" data-value="site" class="active">Site Grid</button>
+                    <button type="button" data-value="wgs">WGS84</button>
+                    <button type="button" data-value="epsg">EPSG:3003</button>
+                </div>
+
+                <!--which local site system the site grid refers to-->
+                <div class="toggle-label">Site system:</div>
+                <div class="toggle-group" id="siteToggle">
+                    <button type="button" data-value="PC" class="active">Poggio Civitate</button>
+                    <button type="button" data-value="VESCO">Vescovado di Murlo</button>
+                </div>
+
+                <!--single point or many points at once-->
+                <div class="toggle-label">Entry mode:</div>
+                <div class="toggle-group" id="entryToggle">
+                    <button type="button" data-value="single" class="active">Single</button>
+                    <button type="button" data-value="batch">Batch</button>
+                </div>
+
+                <form id="inputform">
+                    <div id="singleEntry">
+                        <div class="input-field">
+                            <label for="coord1" id="label1">x-coordinate:</label>
+                            <input type="number" name="coord1" id="coord1" step="any" required>
+                        </div>
+                        <div class="input-field">
+                            <label for="coord2" id="label2">y-coordinate:</label>
+                            <input type="number" name="coord2" id="coord2" step="any" required>
+                        </div>
                     </div>
-                    <div class="input-field">
-                        <label for="ycoord">y-coordinate:</label>
-                        <input type="number" name="ycoord" id="ycoord" step="any" required>
+
+                    <div id="batchEntry" style="display: none;">
+                        <div class="input-field">
+                            <label for="batchInput">Points (one per line):</label>
+                            <textarea id="batchInput" rows="6"></textarea>
+                        </div>
                     </div>
-                    <input type="submit" id="submit" value="Submit">
-                    <!--The submit button. This triggers the code in conversionsonefunction.js, so do not change any info about it unless you also update it in the JS-->
+
+                    <input type="submit" id="submit" value="Convert">
                 </form>
+            </div>
+
+            <!--session history of converted points, hidden until there is at least one-->
+            <div class="glass-card history-card" id="historyCard" style="display: none;">
+                <h3 class="card-title">Recent Conversions</h3>
+                <div id="historyList"></div>
             </div>
         </div>
 
-        <!-- Output Section --> <!--This appears after the JS code has run.-->
+        <!--Output Section-->
         <div class="pages" id="output" style="display: none;">
             <div id="bg-container"></div> <!--background image only-->
-            <div class="output-columns">
+
+            <!--single point result: one card per CRS-->
+            <div class="output-columns" id="singleOutput">
 
                 <div class="glass-card">
-                    <h3 class="card-title">Local</h3>
-                    <div class="coord-block">   
-                        <h4>Site Grid</h4>
+                    <h3 class="card-title">Local <span class="input-badge" id="badge-site">input</span></h3>
+                    <div class="coord-block">
+                        <h4 id="localSystemName">Poggio Civitate</h4>
                         <div id="input-display"></div>
                         <button type="button" class="copy-btn" onclick="copyText('input-display', this)">Copy</button>
                     </div>
                 </div>
 
                 <div class="glass-card">
-                    <h3 class="card-title">WGS84</h3>
+                    <h3 class="card-title">WGS84 <span class="input-badge" id="badge-wgs">input</span></h3>
                     <div class="coord-block">
-                        <h4>Poggio Civitate</h4>
+                        <h4>&nbsp;</h4>
                         <div id="wgs-display"></div>
                         <button type="button" class="copy-btn" onclick="copyText('wgs-display', this)">Copy</button>
-                    </div>
-                    <div class="coord-block">
-                        <h4>Vescovado di Murlo</h4>
-                        <div id="Vwgs-display"></div>
-                        <button type="button" class="copy-btn" onclick="copyText('Vwgs-display', this)">Copy</button>
                     </div>
                 </div>
 
                 <div class="glass-card">
-                    <h3 class="card-title">EPSG:3003</h3>
+                    <h3 class="card-title">EPSG:3003 <span class="input-badge" id="badge-epsg">input</span></h3>
                     <div class="coord-block">
-                        <h4>Poggio Civitate</h4>
+                        <h4>&nbsp;</h4>
                         <div id="espg-display"></div>
                         <button type="button" class="copy-btn" onclick="copyText('espg-display', this)">Copy</button>
-                    </div>
-                    <div class="coord-block">
-                        <h4>Vescovado di Murlo</h4>
-                        <div id="Vespg-display"></div>
-                        <button type="button" class="copy-btn" onclick="copyText('Vespg-display', this)">Copy</button>
                     </div>
                 </div>
 
             </div>
-            <button id="newsearch" onclick="switchToInput()">New Search</button>
-        </div>
-    </div>
-    </div>
 
-    <!--LOADER-->
-    <div id="loader-overlay" class="loader-overlay" style="display: none;">
-        <!--Display is none so that the loader is hidden until needed-->
-        <div class="loader">
-            <div class="loader-inner"></div>
+            <!--batch result: one table for all points-->
+            <div class="glass-card batch-card" id="batchCard" style="display: none;">
+                <h3 class="card-title">Batch Results</h3>
+                <div id="batchResults"></div>
+                <button type="button" class="copy-btn" onclick="copyBatch(this)">Copy All</button>
+            </div>
+
+            <button id="newsearch" onclick="switchToInput()">New Search</button>
         </div>
     </div>
 
     <script src="conversionsonefunction.js"></script>
     <script>
-        document.getElementById("inputform").addEventListener("submit", convert); //this calls the convert function (in the conversionsonefunction.js script
+        document.getElementById("inputform").addEventListener("submit", convert);
     </script>
     <script>
         //this function switches the user back to the input screen
         function switchToInput() {
-            document.getElementById("output").style.display = "none"; //it hides the output screen
-            document.getElementById("input").style.display = "flex"; //it displays the input screen again
+            document.getElementById("output").style.display = "none";
+            document.getElementById("input").style.display = "flex";
         }
     </script>
 </body>
