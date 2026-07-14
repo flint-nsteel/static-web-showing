@@ -112,18 +112,18 @@ function reset(){
         document.getElementById(`${document.getElementById("searchSelect").value}`).style.visibility = "hidden"
         for (let i = 0; i < subFilterList.length; i++) {
             document.getElementById(`${subFilterList[i]}`).style.visibility = "hidden"
+            document.getElementById("fragmentSelect").style.visibility = "hidden"
+            document.getElementById("sexSelect").style.visibility = "hidden"
         }
-        // document.getElementById("fragmentSelect").style.visibility = "hidden"
         // document.getElementById("conservation-material").style.visibility = "hidden"
         // document.getElementById("conservation-action").style.visibility = "hidden"
-        // document.getElementById('searchButton').style.visibility = "hidden"
         // document.getElementById("preserved").style.visibility = "hidden"
         // document.getElementById("proximal-fused").style.visibility = "hidden"
         // document.getElementById("distal-fused").style.visibility = "hidden"
         // document.getElementById("side").style.visibility = "hidden"
         // document.getElementById("age-category").style.visibility = "hidden"
         // document.getElementById("skeletal-area").style.visibility = "hidden"
-        // document.getElementById("sexSelect").style.visibility = "hidden"
+        // document.getElementById('searchButton').style.visibility = "hidden"
         // document.getElementById("resetButton").style.visibility = "hidden"
     }
 
