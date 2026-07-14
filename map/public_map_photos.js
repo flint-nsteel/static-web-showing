@@ -1,13 +1,13 @@
 //Photo point layer for the PUBLIC map. Read-only: fetches the same GeoJSON
 //the editor writes to, draws direction arrows, opens a popup on click, and
-//exposes filter helpers that plug into your existing year/tag UI.
+//exposes filter helpers that plug into the existing year/tag UI.
 //
-//usage in your main map page, after the map exists:
+//usage in the main map page, after the map exists:
 //
 //  <script src="public_map_photos.js"></script>
 //  <script>
 //    map.on("load", () => addPhotoLayer(map, "https://poggiocivitate.net/api/photos"));
-//    //later, from your year checkboxes:
+//    //later, from the year checkboxes:
 //    setPhotoYearFilter(map, [1958, 1959, 1962]);   //or null for all years
 //    setPhotoTagFilter(map, "north wall");          //or null for all tags
 //  </script>
