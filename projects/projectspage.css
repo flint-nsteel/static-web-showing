@@ -62,8 +62,8 @@ body {
 }
 
 .col {
-    flex: 0 0 calc((100% - 40px) / 3);
-    max-width: calc((100% - 40px) / 3);
+    flex: 0 0 100%;
+    max-width: 100%;
     margin: 0;
     box-sizing: border-box;
     min-height: 500px;
@@ -110,8 +110,8 @@ body {
     font-size: 28px;
     margin-bottom: 10px;
     color: #166b53;
-    flex-basis: calc(33.33% - 45px);
-    width: calc(33.33% - 20px);
+    flex-basis: 100%;
+    width: 100%;
     box-sizing: border-box;
     background-position: center;
 }
@@ -124,6 +124,36 @@ body {
     gap: 30px;
     width: 90%;
     min-height: 78vh;
+}
+
+/*RESPONSIVE COLUMNS
+  default (above): 1 per row on phones
+  two per row once there is room for it (large phones / tablets)
+  the 15px subtracted accounts for the single 30px gap shared across 2 items*/
+@media (min-width: 576px) {
+    .col {
+        flex: 0 0 calc(50% - 15px);
+        max-width: calc(50% - 15px);
+    }
+
+    .project {
+        flex-basis: calc(50% - 15px);
+        width: calc(50% - 15px);
+    }
+}
+
+/*three per row on wider screens (previously the fixed layout)
+  the 20px subtracted accounts for two 30px gaps shared across 3 items*/
+@media (min-width: 992px) {
+    .col {
+        flex: 0 0 calc(33.333% - 20px);
+        max-width: calc(33.333% - 20px);
+    }
+
+    .project {
+        flex-basis: calc(33.333% - 20px);
+        width: calc(33.333% - 20px);
+    }
 }
 
 /*This controls the appearance of the overlays*/
