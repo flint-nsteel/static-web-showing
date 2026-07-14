@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map Editor</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+  :root {
+    --ink: #26221c;
+    --muted: #7a7264;
+    --paper: #faf8f4;
+    --line: #e2dcd1;
+    --accent: #b0531c;
+    --accent-ink: #7c3a12;
+    --ok: #2f6b3a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; color: var(--ink); }
+  #app { display: flex; height: 100%; }
+  #map { flex: 1; min-width: 0; }
+  #panel {
+    width: 350px; flex: none; background: var(--paper);
+    border-left: 1px solid var(--line); display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0 0 2px; font-weight: 600; letter-spacing: 0.02em; }
+  header p { margin: 0; font-size: 12px; color: var(--muted); }
+  .section { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+          color: var(--muted); margin: 10px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], input[type=password], input[type=number], input[type=url], textarea {
+    width: 100%; padding: 7px 8px; font: inherit; font-size: 13px;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  button {
+    font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { background: var(--accent-ink); }
+  button.active { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #status { font-size: 12px; min-height: 16px; margin-top: 8px; color: var(--muted); }
+  #status.err { color: #a3271f; }
+  #status.ok { color: var(--ok); }
+  #rotval { width: 64px; flex: none; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .coords { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #empty { padding: 24px 16px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .danger { color: #a3271f; border-color: #d8b6b2; }
+  .danger:hover { border-color: #a3271f; }
+  .maplibregl-canvas-container.crosshair .maplibregl-canvas { cursor: crosshair; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <div id="panel">
+    <header>
+      <h1>Photo point editor</h1>
+      <p>Click a point to edit it. Changes go live when you save.</p>
+    </header>
+
+    <div class="section">
+      <label for="editor">Your name</label>
+      <input type="text" id="editor" placeholder="Shown in the edit history">
+      <label for="token">Passphrase</label>
+      <input type="password" id="token" placeholder="Ask Cole (hint: pottery)">
+      <div class="btnrow">
+        <button id="btn-add">Add photo point</button>
+      </div>
+    </div>
+
+    <div id="empty">No point selected. Click an arrow on the map, or use
+      "Add photo point" and click where a photo was taken.</div>
+
+    <form id="editform" class="section" style="display:none" autocomplete="off">
+      <label>Point</label>
+      <div class="coords" id="meta"></div>
+
+      <label for="f-desc">Description</label>
+      <textarea id="f-desc" placeholder="What does the photograph show?"></textarea>
+
+      <label for="f-tags">Tags (comma separated)</label>
+      <input type="text" id="f-tags" placeholder="e.g. CA 24, north wall, 1970 season">
+
+      <label for="f-url">Image link</label>
+      <input type="url" id="f-url" placeholder="https://...">
+
+      <label for="f-year">Year</label>
+      <input type="number" id="f-year" min="1800" max="2100" step="1">
+
+      <label for="f-rot">Camera direction (degrees from north)</label>
+      <div class="row">
+        <input type="range" id="f-rot" min="0" max="359" step="1" value="0">
+        <input type="number" id="rotval" min="0" max="359" step="1" value="0">
+      </div>
+      <div class="btnrow">
+        <button type="button" id="btn-aim">Aim at a map click</button>
+        <button type="button" id="btn-move">Move point</button>
+      </div>
+      <p class="hint" id="modehint"></p>
+
+      <div class="btnrow">
+        <button type="button" class="primary" id="btn-save">Save changes</button>
+        <button type="button" id="btn-revert">Revert</button>
+        <button type="button" class="danger" id="btn-delete">Delete</button>
+      </div>
+      <div id="status"></div>
+    </form>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+//----------------------------------------------------------------------
+//configuration
+const apiBase = "https://poggiocivitate.net/api";
+const API = apiBase + "/photos";
+//starting view: set to the site
+const START = { center: [11.402414, 43.154166], z: 16 };
+//----------------------------------------------------------------------
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: START.center,
+  zoom: START.z,
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "&copy; OpenStreetMap contributors"
+      }
+    },
+    layers: [{ id: "osm", type: "raster", source: "osm" }]
+  }
+});
+map.addControl(new maplibregl.NavigationControl());
+
+//to overlay the published trench/plan tiles for context, add the pmtiles
+//protocol here the same way the public map does (see public_map_photos.js)
+
+let data = { type: "FeatureCollection", features: [] };
+let original = new Map();
+let selectedId = null;
+let mode = null;
+let dragging = false;
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+
+//remember credentials between visits (this page lives on the project server)
+$("token").value = localStorage.getItem("photoToken") || "";
+$("editor").value = localStorage.getItem("photoEditor") || "";
+$("token").addEventListener("change", e => localStorage.setItem("photoToken", e.target.value));
+$("editor").addEventListener("change", e => localStorage.setItem("photoEditor", e.target.value));
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + $("token").value,
+    "X-Editor": $("editor").value || "unknown"
+  };
+}
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg || "";
+  statusEl.className = cls || "";
+}
+
+function findFeature(id) {
+  return data.features.find(f => f.properties.id === id);
+}
+
+function refresh() {
+  const src = map.getSource("photos");
+  if (src) src.setData(data);
+}
+
+//a simple sdf arrow so maplibre can recolor it per feature
+function makeArrowImage() {
+  const s = 64, c = document.createElement("canvas");
+  c.width = c.height = s;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  //shaft
+  ctx.moveTo(s * 0.44, s * 0.86); ctx.lineTo(s * 0.56, s * 0.86);
+  ctx.lineTo(s * 0.56, s * 0.38); ctx.lineTo(s * 0.44, s * 0.38);
+  ctx.closePath(); ctx.fill();
+  //head, pointing up which is north at rotation 0
+  ctx.beginPath();
+  ctx.moveTo(s * 0.5, s * 0.10); ctx.lineTo(s * 0.76, s * 0.42);
+  ctx.lineTo(s * 0.24, s * 0.42);
+  ctx.closePath(); ctx.fill();
+  return ctx.getImageData(0, 0, s, s);
+}
+
+map.on("load", async () => {
+  map.addImage("photo-arrow", makeArrowImage(), { sdf: true });
+
+  try {
+    data = await fetch(API).then(r => r.json());
+  } catch (e) {
+    setStatus("Could not load photo points from the server", "err");
+  }
+  data.features.forEach(f => original.set(f.properties.id, JSON.parse(JSON.stringify(f))));
+
+  map.addSource("photos", { type: "geojson", data });
+
+  //halo ring under the selected point
+  map.addLayer({
+    id: "photo-selected",
+    type: "circle",
+    source: "photos",
+    paint: {
+      "circle-radius": 18,
+      "circle-color": "#b0531c",
+      "circle-opacity": 0.18,
+      "circle-stroke-color": "#b0531c",
+      "circle-stroke-width": 2
+    },
+    filter: ["==", ["get", "id"], "___none___"]
+  });
+
+  map.addLayer({
+    id: "photo-arrows",
+    type: "symbol",
+    source: "photos",
+    layout: {
+      "icon-image": "photo-arrow",
+      "icon-size": 0.5,
+      "icon-rotate": ["get", "rotation"],
+      "icon-rotation-alignment": "map",
+      "icon-allow-overlap": true
+    },
+    paint: {
+      "icon-color": "#26221c"
+    }
+  });
+
+  map.on("click", "photo-arrows", e => {
+    if (mode === "add") return;
+    selectPoint(e.features[0].properties.id);
+  });
+  map.on("mouseenter", "photo-arrows", () => { if (!mode) map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "photo-arrows", () => { if (!mode) map.getCanvas().style.cursor = ""; });
+
+  map.on("click", e => {
+    if (mode === "add") return addPointAt(e.lngLat);
+    if (mode === "aim" && selectedId) return aimAt(e.lngLat);
+  });
+
+  //drag to move the selected point while move mode is on
+  map.on("mousedown", "photo-arrows", e => {
+    if (mode !== "move") return;
+    const id = e.features[0].properties.id;
+    if (id !== selectedId) return;
+    e.preventDefault();
+    dragging = true;
+    map.getCanvas().style.cursor = "grabbing";
+  });
+  map.on("mousemove", e => {
+    if (!dragging) return;
+    const f = findFeature(selectedId);
+    f.geometry.coordinates = [e.lngLat.lng, e.lngLat.lat];
+    refresh();
+    showMeta(f);
+    setStatus("Unsaved changes", "err");
+  });
+  map.on("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    map.getCanvas().style.cursor = "";
+  });
+
+  document.addEventListener("keydown", e => { if (e.key === "Escape") setMode(null); });
+});
+
+function selectPoint(id) {
+  selectedId = id;
+  setMode(null);
+  map.setFilter("photo-selected", ["==", ["get", "id"], id]);
+  const f = findFeature(id);
+  $("empty").style.display = "none";
+  $("editform").style.display = "block";
+  fillForm(f);
+  setStatus("");
+}
+
+function fillForm(f) {
+  const p = f.properties;
+  $("f-desc").value = p.description || "";
+  $("f-tags").value = (p.tags || []).join(", ");
+  $("f-url").value = p.image_url || "";
+  $("f-year").value = p.year ?? "";
+  $("f-rot").value = Math.round(p.rotation || 0);
+  $("rotval").value = Math.round(p.rotation || 0);
+  showMeta(f);
+}
+
+function showMeta(f) {
+  const [lon, lat] = f.geometry.coordinates;
+  const p = f.properties;
+  const edited = p.updated_at ? `last edit ${p.updated_at.slice(0, 10)} by ${p.updated_by || "?"}` : "new point";
+  $("meta").textContent = `${p.id}  |  ${lat.toFixed(6)}, ${lon.toFixed(6)}  |  ${edited}`;
+}
+
+//rotation slider and number box stay in sync and preview live on the map
+function setRotation(v) {
+  v = ((parseFloat(v) || 0) % 360 + 360) % 360;
+  $("f-rot").value = Math.round(v);
+  $("rotval").value = Math.round(v);
+  const f = findFeature(selectedId);
+  if (!f) return;
+  f.properties.rotation = v;
+  refresh();
+  setStatus("Unsaved changes", "err");
+}
+$("f-rot").addEventListener("input", e => setRotation(e.target.value));
+$("rotval").addEventListener("input", e => setRotation(e.target.value));
+
+function bearing(from, to) {
+  const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+  const [l1, f1] = [rad(from[0]), rad(from[1])];
+  const [l2, f2] = [rad(to[0]), rad(to[1])];
+  const y = Math.sin(l2 - l1) * Math.cos(f2);
+  const x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(l2 - l1);
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function aimAt(lngLat) {
+  const f = findFeature(selectedId);
+  setRotation(bearing(f.geometry.coordinates, [lngLat.lng, lngLat.lat]));
+  setMode(null);
+}
+
+function setMode(m) {
+  mode = mode === m ? null : m;
+  $("btn-move").classList.toggle("active", mode === "move");
+  $("btn-aim").classList.toggle("active", mode === "aim");
+  $("btn-add").classList.toggle("active", mode === "add");
+  map.getCanvasContainer().classList.toggle("crosshair", mode === "add" || mode === "aim");
+  $("modehint").textContent =
+    mode === "move" ? "Drag the highlighted arrow to its new position." :
+    mode === "aim" ? "Click the spot on the map the camera was looking at." :
+    mode === "add" ? "Click the map where the photograph was taken." : "";
+}
+$("btn-move").addEventListener("click", () => setMode("move"));
+$("btn-aim").addEventListener("click", () => setMode("aim"));
+$("btn-add").addEventListener("click", () => setMode("add"));
+
+async function addPointAt(lngLat) {
+  setMode(null);
+  setStatus("Creating point...");
+  const body = { lon: lngLat.lng, lat: lngLat.lat, rotation: 0 };
+  try {
+    const r = await fetch(API, { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    const feature = await r.json();
+    data.features.push(feature);
+    original.set(feature.properties.id, JSON.parse(JSON.stringify(feature)));
+    refresh();
+    selectPoint(feature.properties.id);
+    setStatus("Point created. Fill in the details and save.", "ok");
+  } catch (e) {
+    setStatus("Could not create point: " + e.message, "err");
+  }
+}
+
+$("btn-save").addEventListener("click", async () => {
+  const f = findFeature(selectedId);
+  if (!f) return;
+  const body = {
+    lon: f.geometry.coordinates[0],
+    lat: f.geometry.coordinates[1],
+    rotation: parseFloat($("f-rot").value) || 0,
+    description: $("f-desc").value,
+    tags: $("f-tags").value,
+    image_url: $("f-url").value,
+    year: $("f-year").value || null
+  };
+  setStatus("Saving...");
+  try {
+    const r = await fetch(`${API}/${selectedId}`, {
+      method: "PUT", headers: authHeaders(), body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    const updated = await r.json();
+    Object.assign(f, updated);
+    original.set(selectedId, JSON.parse(JSON.stringify(updated)));
+    refresh();
+    fillForm(f);
+    setStatus("Saved", "ok");
+  } catch (e) {
+    setStatus("Save failed: " + e.message, "err");
+  }
+});
+
+$("btn-revert").addEventListener("click", () => {
+  const orig = original.get(selectedId);
+  if (!orig) return;
+  const i = data.features.findIndex(f => f.properties.id === selectedId);
+  data.features[i] = JSON.parse(JSON.stringify(orig));
+  refresh();
+  fillForm(data.features[i]);
+  setStatus("Reverted to last saved version", "ok");
+});
+
+$("btn-delete").addEventListener("click", async () => {
+  if (!confirm("Delete this photo point? This cannot be undone.")) return;
+  try {
+    const r = await fetch(`${API}/${selectedId}`, { method: "DELETE", headers: authHeaders() });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    data.features = data.features.filter(f => f.properties.id !== selectedId);
+    original.delete(selectedId);
+    selectedId = null;
+    refresh();
+    map.setFilter("photo-selected", ["==", ["get", "id"], "___none___"]);
+    $("editform").style.display = "none";
+    $("empty").style.display = "block";
+  } catch (e) {
+    setStatus("Delete failed: " + e.message, "err");
+  }
+});
+</script>
+</body>
+</html>

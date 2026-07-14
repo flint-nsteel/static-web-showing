@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poggio Civitate | Interactive Site Map</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+  :root {
+    --ink: #26221c;
+    --muted: #7a7264;
+    --paper: #faf8f4;
+    --line: #e2dcd1;
+    --accent: #b0531c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; color: var(--ink); }
+  #app { display: flex; height: 100%; }
+  #sidebar {
+    width: 290px; flex: none; background: var(--paper);
+    border-right: 1px solid var(--line); overflow-y: auto; padding: 16px;
+  }
+  #map { flex: 1; min-width: 0; }
+  h1 { font-size: 16px; margin: 0 0 2px; font-weight: 600; }
+  .sub { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+       color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  label.check { display: flex; align-items: center; gap: 8px; font-size: 13px;
+                padding: 3px 0; cursor: pointer; }
+  input[type=checkbox] { accent-color: var(--accent); }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  #years { display: grid; grid-template-columns: 1fr 1fr; }
+  .yearbtns { display: flex; gap: 8px; margin-top: 6px; }
+  .yearbtns button {
+    font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 5px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer;
+  }
+  .yearbtns button:hover { border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .popup { font: 13px/1.45 system-ui, sans-serif; max-width: 240px; }
+  .popup a { color: var(--accent); }
+  footer { margin-top: 24px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <h1>Poggio Civitate</h1>
+    <p class="sub">Interactive site map</p>
+
+    <h2>Layers</h2>
+    <label class="check"><input type="checkbox" data-layers="trenches-fill,trenches-line" checked>
+      <span class="swatch" style="background:#b0531c55;border:1px solid #b0531c"></span> Trenches</label>
+    <label class="check"><input type="checkbox" data-layers="finds" checked>
+      <span class="swatch" style="background:#3b5b78;border-radius:50%"></span> Finds</label>
+    <label class="check"><input type="checkbox" data-layers="photo-points" checked>
+      <span class="swatch" style="background:#26221c;clip-path:polygon(50% 0,100% 100%,0 100%)"></span> Archival photos</label>
+    <label class="check" id="plans-toggle" style="display:none"><input type="checkbox" data-layers="plans" checked>
+      <span class="swatch" style="background:#8a8a8a"></span> Site plans</label>
+    <div id="plans-opacity" style="display:none">
+      <h2>Plan opacity</h2>
+      <input type="range" min="0" max="100" value="75">
+    </div>
+
+    <h2>Excavation years</h2>
+    <div id="years"></div>
+    <div class="yearbtns">
+      <button id="years-all">All</button>
+      <button id="years-none">None</button>
+    </div>
+
+    <footer>
+      Trenches and finds link to full records in Open Context.
+      Photo arrows show where archival photographs were taken and the
+      direction the camera faced.
+    </footer>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<script src="public_map_photos.js"></script>
+<script>
+//----------------------------------------------------------------------
+//configuration: everything site-specific lives here
+const CONFIG = {
+  center: [11.402414, 43.154166],
+  zoom: 16,
+  //vector tile archive produced by tippecanoe (see publish script);
+  //the path is relative to this page, served straight by Apache
+  vectorTiles: "pmtiles://tiles/site.pmtiles",
+  //layer names given to tippecanoe with -L; must match exactly
+  trenchLayer: "trenches",
+  findsLayer: "finds",
+  //raster site plan archive, or null if plans are not published yet
+  planTiles: null, //"pmtiles://tiles/plans.pmtiles"
+  //seasons available in the year filter; must match the year attribute
+  years: [1966, 1967, 1968, 1969, 1970, 1971, 1972],
+  //attribute names on trench features
+  trenchName: "name",
+  trenchYear: "year",
+  //builds the link into the project database from a trench's properties;
+  //return null to omit the link
+  trenchDbUrl: (props) => props.db_url || null,
+  photoApi: "/api/photos",
+};
+//----------------------------------------------------------------------
+
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile);
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: CONFIG.center,
+  zoom: CONFIG.zoom,
+  style: {
+    version: 8,
+    sources: {
+      //placeholder basemap; swap for a protomaps/openfreemap style, or
+      //remove entirely for a mapgenie-style plan-only look
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "&copy; OpenStreetMap contributors"
+      }
+    },
+    layers: [{ id: "osm", type: "raster", source: "osm" }]
+  }
+});
+map.addControl(new maplibregl.NavigationControl());
+map.addControl(new maplibregl.ScaleControl());
+
+const selectedYears = new Set(CONFIG.years);
+
+function yearFilter() {
+  //null means no filtering, i.e. every year is selected
+  if (selectedYears.size === CONFIG.years.length) return null;
+  return ["in", ["get", CONFIG.trenchYear], ["literal", [...selectedYears]]];
+}
+
+function applyYearFilter() {
+  const f = yearFilter();
+  for (const id of ["trenches-fill", "trenches-line", "finds"]) {
+    if (map.getLayer(id)) map.setFilter(id, f);
+  }
+  //photo layer keeps its own filter state (it can also filter by tag)
+  setPhotoYearFilter(map, f ? [...selectedYears] : null);
+}
+
+map.on("load", async () => {
+  map.addSource("site", { type: "vector", url: CONFIG.vectorTiles });
+
+  if (CONFIG.planTiles) {
+    map.addSource("plans-src", { type: "raster", url: CONFIG.planTiles, tileSize: 256 });
+    map.addLayer({
+      id: "plans", type: "raster", source: "plans-src",
+      paint: { "raster-opacity": 0.75 }
+    });
+    document.getElementById("plans-toggle").style.display = "flex";
+    document.getElementById("plans-opacity").style.display = "block";
+  }
+
+  map.addLayer({
+    id: "trenches-fill",
+    type: "fill",
+    source: "site",
+    "source-layer": CONFIG.trenchLayer,
+    paint: { "fill-color": "#b0531c", "fill-opacity": 0.22 }
+  });
+  map.addLayer({
+    id: "trenches-line",
+    type: "line",
+    source: "site",
+    "source-layer": CONFIG.trenchLayer,
+    paint: { "line-color": "#b0531c", "line-width": 1.4 }
+  });
+  map.addLayer({
+    id: "finds",
+    type: "circle",
+    source: "site",
+    "source-layer": CONFIG.findsLayer,
+    minzoom: 15,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 2, 19, 5],
+      "circle-color": "#3b5b78",
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 0.5
+    }
+  });
+
+  //live photo layer from the api (defined in public_map_photos.js)
+  await addPhotoLayer(map, CONFIG.photoApi);
+
+  //trench popups with a link into the database
+  map.on("click", "trenches-fill", (e) => {
+    const p = e.features[0].properties;
+    const url = CONFIG.trenchDbUrl(p);
+    const html = `
+      <div class="popup">
+        <strong>${escapePopup(p[CONFIG.trenchName] || "Trench")}</strong><br>
+        ${p[CONFIG.trenchYear] ? `Excavated ${escapePopup(p[CONFIG.trenchYear])}<br>` : ""}
+        ${url ? `<a href="${escapePopup(url)}" target="_blank" rel="noopener">View in database</a>` : ""}
+      </div>`;
+    new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map);
+  });
+  map.on("mouseenter", "trenches-fill", () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", "trenches-fill", () => map.getCanvas().style.cursor = "");
+
+  buildYearCheckboxes();
+  wireLayerToggles();
+});
+
+function escapePopup(s) {
+  return String(s ?? "").replace(/[&<>"']/g,
+    ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+
+function buildYearCheckboxes() {
+  const box = document.getElementById("years");
+  for (const y of CONFIG.years) {
+    const label = document.createElement("label");
+    label.className = "check";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = true;
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedYears.add(y); else selectedYears.delete(y);
+      applyYearFilter();
+    });
+    label.append(cb, document.createTextNode(y));
+    box.append(label);
+  }
+  const setAll = (on) => {
+    selectedYears.clear();
+    if (on) CONFIG.years.forEach((y) => selectedYears.add(y));
+    box.querySelectorAll("input").forEach((cb) => cb.checked = on);
+    applyYearFilter();
+  };
+  document.getElementById("years-all").addEventListener("click", () => setAll(true));
+  document.getElementById("years-none").addEventListener("click", () => setAll(false));
+}
+
+function wireLayerToggles() {
+  document.querySelectorAll("input[data-layers]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      for (const id of cb.dataset.layers.split(",")) {
+        if (map.getLayer(id)) {
+          map.setLayoutProperty(id, "visibility", cb.checked ? "visible" : "none");
+        }
+      }
+    });
+  });
+  const slider = document.querySelector("#plans-opacity input");
+  slider.addEventListener("input", () => {
+    if (map.getLayer("plans")) {
+      map.setPaintProperty("plans", "raster-opacity", slider.value / 100);
+    }
+  });
+}
+</script>
+</body>
+</html>
